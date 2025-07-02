@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { DatabaseService } from '../database/database.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private jwtService: JwtService,
-    private databaseService: DatabaseService,
+    private prisma: PrismaService,
   ) {
   }
 
@@ -14,18 +14,21 @@ export class AuthService {
     const { id: googleId, displayName, emails } = profile;
     const email = emails[0].value;
   
-    const userResult = await this.databaseService.query(
-      'SELECT * FROM users WHERE google_id = $1',
-      [googleId],
-    );
+    // Try to find existing user by googleId
+    let user = await this.prisma.user.findUnique({
+      where: { googleId },
+    });
   
-    let user = userResult.rows[0];
+    // If user doesn't exist, create a new one
     if (!user) {
-      const insertResult = await this.databaseService.query(
-        'INSERT INTO users (google_id, name, email) VALUES ($1, $2, $3) RETURNING *',
-        [googleId, displayName, email],
-      );
-      user = insertResult.rows[0];
+      user = await this.prisma.user.create({
+        data: {
+          googleId,
+          name: displayName,
+          email,
+          photo_url: profile.photos[0]?.value,
+        },
+      });
     }
     return user;
   }

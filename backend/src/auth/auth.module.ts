@@ -3,7 +3,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtModule } from '@nestjs/jwt';
-import { DatabaseModule } from '../database/database.module';
+import { PrismaModule } from '../prisma/prisma.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
@@ -19,7 +19,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         },
       }),
     }),
-    DatabaseModule,
+    PrismaModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, GoogleStrategy],
