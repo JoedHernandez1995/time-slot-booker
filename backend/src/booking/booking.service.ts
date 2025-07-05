@@ -1,14 +1,28 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Booking } from 'generated/prisma';
+import { CreateBookingDto } from './dto/create-booking.dto';
+import { UpdateBookingDto } from './dto/update-booking.dto';
 
 @Injectable()
 export class BookingService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createBooking(booking: Booking) {
+  async createBooking(createBookingDto: CreateBookingDto & { userId: string }) {
     const newBooking = await this.prisma.booking.create({
-      data: booking,
+      data: {
+        ...createBookingDto,
+        startTime: new Date(createBookingDto.startTime),
+        endTime: new Date(createBookingDto.endTime),
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
     });
     return newBooking;
   }
@@ -96,10 +110,29 @@ export class BookingService {
       },
     });
   }
-  async updateBooking(id: string, booking: Booking, userId: string) {
+  async updateBooking(id: string, updateBookingDto: UpdateBookingDto, userId: string) {
+    const updateData: any = { ...updateBookingDto };
+    
+    // Convert date strings to Date objects if provided
+    if (updateBookingDto.startTime) {
+      updateData.startTime = new Date(updateBookingDto.startTime);
+    }
+    if (updateBookingDto.endTime) {
+      updateData.endTime = new Date(updateBookingDto.endTime);
+    }
+
     return this.prisma.booking.update({
       where: { id, userId },
-      data: booking,
+      data: updateData,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
     });
   }
 

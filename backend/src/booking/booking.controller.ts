@@ -1,62 +1,112 @@
-import { Controller, Get, Post, Put, Delete, Req, Res, UseGuards, Param, Query } from '@nestjs/common';
-import { Request, Response } from 'express';
+import { 
+  Controller, 
+  Get, 
+  Post, 
+  Put, 
+  Delete, 
+  Body,
+  Param, 
+  Query,
+  UseGuards, 
+  UsePipes, 
+  ValidationPipe,
+  ParseUUIDPipe,
+  Request,
+  HttpStatus,
+  HttpCode,
+  NotFoundException
+} from '@nestjs/common';
 import { BookingService } from './booking.service';
 import { AuthGuard } from '@nestjs/passport';
+import { CreateBookingDto } from './dto/create-booking.dto';
+import { UpdateBookingDto } from './dto/update-booking.dto';
+import { QueryBookingDto } from './dto/query-booking.dto';
 
 @Controller('booking')
+@UseGuards(AuthGuard('jwt'))
+@UsePipes(new ValidationPipe({ 
+  transform: true, 
+  whitelist: true, 
+  forbidNonWhitelisted: true 
+}))
 export class BookingController {
   constructor(private readonly bookingService: BookingService) {}
 
   @Get()
-  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.OK)
   async getBookings(
-    @Req() req, 
-    @Res() res,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Query('dateFrom') dateFrom?: string,
-    @Query('dateTo') dateTo?: string,
+    @Request() req,
+    @Query() queryDto: QueryBookingDto,
   ) {
     const user = req.user;
-    const filters = { startDate, endDate, dateFrom, dateTo };
-    const bookings = await this.bookingService.getBookings(user.id, filters);
-    return res.status(200).json(bookings);
+    const bookings = await this.bookingService.getBookings(user.id, queryDto);
+    return {
+      status: 'success',
+      data: bookings,
+      count: bookings.length
+    };
   }
 
   @Get(':id')
-  @UseGuards(AuthGuard('jwt'))
-  async getBooking(@Param('id') id: string, @Req() req, @Res() res) {
+  @HttpCode(HttpStatus.OK)
+  async getBooking(
+    @Param('id', ParseUUIDPipe) id: string, 
+    @Request() req
+  ) {
     const user = req.user;
     const booking = await this.bookingService.getBooking(id, user.id);
-    return res.status(200).json(booking);
+    
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+    
+    return {
+      status: 'success',
+      data: booking
+    };
   }
 
   @Post()
-  @UseGuards(AuthGuard('jwt'))
-  async createBooking(@Req() req, @Res() res) {
+  @HttpCode(HttpStatus.CREATED)
+  async createBooking(
+    @Body() createBookingDto: CreateBookingDto,
+    @Request() req
+  ) {
     const user = req.user;
-    const booking = req.body;
     const newBooking = await this.bookingService.createBooking({
-      ...booking,
+      ...createBookingDto,
       userId: user.id,
     });
-    return res.status(201).json(newBooking);
+    return {
+      status: 'success',
+      message: 'Booking created successfully',
+      data: newBooking
+    };
   }
 
   @Put(':id')
-  @UseGuards(AuthGuard('jwt'))
-  async updateBooking(@Param('id') id: string, @Req() req, @Res() res) {
+  @HttpCode(HttpStatus.OK)
+  async updateBooking(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateBookingDto: UpdateBookingDto,
+    @Request() req
+  ) {
     const user = req.user;
-    const booking = req.body;
-    const updatedBooking = await this.bookingService.updateBooking(id, booking, user.id);
-    return res.status(200).json(updatedBooking);
+    const updatedBooking = await this.bookingService.updateBooking(id, updateBookingDto, user.id);
+    return {
+      status: 'success',
+      message: 'Booking updated successfully',
+      data: updatedBooking
+    };
   }
   
   @Delete(':id')
-  @UseGuards(AuthGuard('jwt'))
-  async deleteBooking(@Param('id') id: string, @Req() req, @Res() res) {
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteBooking(
+    @Param('id', ParseUUIDPipe) id: string, 
+    @Request() req
+  ) {
     const user = req.user;
     await this.bookingService.deleteBooking(id, user.id);
-    return res.status(204).send();
   }
 }
