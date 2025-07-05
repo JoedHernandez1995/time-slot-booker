@@ -14,7 +14,8 @@ import {
   Request,
   HttpStatus,
   HttpCode,
-  NotFoundException
+  NotFoundException,
+  BadRequestException
 } from '@nestjs/common';
 import { BookingService } from './booking.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -54,6 +55,7 @@ export class BookingController {
     @Request() req
   ) {
     const user = req.user;
+    
     const booking = await this.bookingService.getBooking(id, user.id);
     
     if (!booking) {
